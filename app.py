@@ -10,12 +10,16 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 MATCH_LOG_FILE = 'match_history.csv'
 
-# Initialize an empty history file if it doesn't exist
-if not os.path.exists(MATCH_LOG_FILE):
+def initialize_empty_history():
+    """Creates a fresh, empty match history file with headers."""
     pd.DataFrame(columns=[
         'Player', 'Opponent', 'LegsWon', 'LegsLost', 'DartsThrown', 
         'MatchAvg', 'CoHits', 'CoAtt', 'H100', 'H140', 'H180'
     ]).to_csv(MATCH_LOG_FILE, index=False)
+
+# Initialize an empty history file if it doesn't exist yet
+if not os.path.exists(MATCH_LOG_FILE):
+    initialize_empty_history()
 
 def extract_checkout_stats(val):
     """Parses text fields like '37.50% (3/8)' into explicit hits and attempts."""
@@ -28,13 +32,10 @@ def extract_checkout_stats(val):
 
 def parse_and_log_match(filepath):
     df = pd.read_excel(filepath)
-    # Identify players dynamically from column headings
     p1, p2 = df.columns[1], df.columns[2]
     
-    # Restructure into string-indexed key-value pairs
     stats = {str(row['Stats']).strip(): (row[p1], row[p2]) for _, row in df.iterrows()}
     
-    # Extract structural variables safely
     l_won_1, l_won_2 = int(stats['Legs won'][0]), int(stats['Legs won'][1])
     darts_1, darts_2 = int(stats['Darts thrown'][0]), int(stats['Darts thrown'][1])
     avg_1, avg_2 = float(stats['Average'][0]), float(stats['Average'][1])
@@ -46,7 +47,6 @@ def parse_and_log_match(filepath):
     h140_1, h140_2 = int(stats['140+'][0]), int(stats['140+'][1])
     h180_1, h180_2 = int(stats['180'][0]), int(stats['180'][1])
     
-    # Build logs for both sides
     match_rows = [
         [p1, p2, l_won_1, l_won_2, darts_1, avg_1, co_hit_1, co_att_1, h100_1, h140_1, h180_1],
         [p2, p1, l_won_2, l_won_1, darts_2, avg_2, co_hit_2, co_att_2, h100_2, h140_2, h180_2]
@@ -59,12 +59,13 @@ def parse_and_log_match(filepath):
     df_log.to_csv(MATCH_LOG_FILE, mode='a', header=False, index=False)
 
 def generate_league_table():
+    if not os.path.exists(MATCH_LOG_FILE):
+        return pd.DataFrame()
     df_history = pd.read_csv(MATCH_LOG_FILE)
     if df_history.empty:
         return pd.DataFrame()
         
     summary = []
-    # Dynamic processing for all distinct players found in history
     for player in df_history['Player'].unique():
         pdf = df_history[df_history['Player'] == player]
         
@@ -74,14 +75,12 @@ def generate_league_table():
         lf = pdf['LegsWon'].sum()
         la = pdf['LegsLost'].sum()
         ld = lf - la
-        pts = w  # 1 point per match win
+        pts = w
         
-        # Weighted Running Average using Total Points Scored / (Total Darts / 3)
         total_darts = pdf['DartsThrown'].sum()
         total_points_scored = sum(pdf['MatchAvg'] * (pdf['DartsThrown'] / 3))
         running_avg = (total_points_scored / (total_darts / 3)) if total_darts > 0 else 0
         
-        # Weighted Checkout %
         total_co_hits = pdf['CoHits'].sum()
         total_co_att = pdf['CoAtt'].sum()
         running_co = (total_co_hits / total_co_att * 100) if total_co_att > 0 else 0
@@ -93,14 +92,12 @@ def generate_league_table():
         })
         
     df_table = pd.DataFrame(summary)
-    # Sort hierarchy: Points DESC -> Leg Difference DESC -> Legs For DESC
     df_table = df_table.sort_values(by=['Pts', 'LD', 'LF'], ascending=[False, False, False]).reset_index(drop=True)
     df_table.insert(0, 'Pos', range(1, len(df_table) + 1))
     return df_table
 
-# --- UI Template (Combined Dashboard and Admin Upload Screen) ---
 HTML_TEMPLATE = """
-<!xltype html>
+<!DOCTYPE html>
 <html>
 <head>
     <title>Danang Darts League (DDL)</title>
@@ -113,6 +110,7 @@ HTML_TEMPLATE = """
         td { background-color: #1a1f26 !important; vertical-align: middle; }
         .pos-col { font-weight: bold; color: #edd045; }
         .ld-pos { color: #48bb78; } .ld-neg { color: #f56565; }
+        .admin-section { margin-top: 80px; border-top: 1px dashed #2d3748; pt-4; }
     </style>
 </head>
 <body class="py-5">
@@ -120,7 +118,7 @@ HTML_TEMPLATE = """
         <h2 class="text-center mb-4 text-uppercase tracking-wider">Danang Darts League (DDL) - Standings</h2>
         
         {% with messages = get_flashed_messages() %}
-          {% if messages %}<div class="alert alert-success bg-success text-white border-0">{{ messages[0] }}</div>{% endif %}
+          {% if messages %}<div class="alert alert-info bg-primary text-white border-0">{{ messages[0] }}</div>{% endif %}
         {% endwith %}
 
         <div class="card p-4 mb-5">
@@ -156,6 +154,14 @@ HTML_TEMPLATE = """
                 </table>
             </div>
         </div>
+
+        <!-- Hidden Danger Zone Reset Panel for the League Owner -->
+        <div class="admin-section pt-4 text-center">
+            <p class="text-muted small mb-2">League Management Controls</p>
+            <form method="POST" action="/reset-league" onsubmit="return confirm('WARNING: This will permanently delete all logged match entries and completely wipe the current league table. Are you absolutely sure you want to start a new season?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm px-4">Wipe Data & Start New Season</button>
+            </form>
+        </div>
     </div>
 </body>
 </html>
@@ -179,6 +185,13 @@ def upload_file():
         parse_and_log_match(filepath)
         flash(f"Successfully processed and merged match values from '{file.filename}'!")
         
+    return redirect('/')
+
+@app.route('/reset-league', methods=['POST'])
+def reset_league():
+    # Overwrites the tracking file back to blank columns
+    initialize_empty_history()
+    flash("The league has been reset! All history has been cleared, and the table is fresh.")
     return redirect('/')
 
 if __name__ == '__main__':
