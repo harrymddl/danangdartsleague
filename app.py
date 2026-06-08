@@ -147,7 +147,7 @@ HTML_TEMPLATE = """
                             <td>{{ row.MP }}</td><td>{{ row.W }}</td><td>{{ row.L }}</td><td>{{ row.LF }}</td><td>{{ row.LA }}</td>
                             <td class="{{ 'ld-pos' if row.LD >= 0 else 'ld-neg' }} fw-bold">{{ '+' if row.LD > 0 }}{{ row.LD }}</td>
                             <td class="fw-bold text-warning">{{ row.Pts }}</td><td>{{ row.Avg }}</td><td>{{ row.CO }}</td>
-                            <td>{{ row.180 }}</td><td>{{ row.140+ }}</td><td>{{ row.100+ }}</td>
+                            <td>{{ row['180'] }}</td><td>{{ row['140+'] }}</td><td>{{ row['100+'] }}</td>
                         </tr>
                         {% else %}
                         <tr><td colspan="14" class="text-muted py-4">No match data logged yet. Upload your first game above!</td></tr>
