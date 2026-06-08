@@ -107,10 +107,14 @@ HTML_TEMPLATE = """
         .card { background-color: #1a1f26; border: 1px solid #2d3748; color: #fff; }
         .table { color: #e2e8f0; border-color: #2d3748; }
         th { background-color: #242b35 !important; color: #a0aec0 !important; font-weight: 600; }
-        td { background-color: #1a1f26 !important; vertical-align: middle; }
+        
+        /* FIX: Force player rows text color to brilliant white */
+        td { background-color: #1a1f26 !important; color: #ffffff !important; vertical-align: middle; }
+        
         .pos-col { font-weight: bold; color: #edd045; }
         .ld-pos { color: #48bb78; } .ld-neg { color: #f56565; }
         .admin-section { margin-top: 80px; border-top: 1px dashed #2d3748; pt-4; }
+        .upload-label { color: #cbd5e1 !important; font-weight: 500; }
     </style>
 </head>
 <body class="py-5">
@@ -122,7 +126,7 @@ HTML_TEMPLATE = """
         {% endwith %}
 
         <div class="card p-4 mb-5">
-            <h5 class="mb-3 text-muted">Upload Weekly Match Result (.xlsx)</h5>
+            <h5 class="mb-3 upload-label">Upload Weekly Match Result (.xlsx)</h5>
             <form method="POST" action="/upload" enctype="multipart/form-data" class="row g-3 align-items-center">
                 <div class="col-sm-8"><input class="form-control" type="file" name="file" accept=".xlsx" required></div>
                 <div class="col-sm-4"><button type="submit" class="btn btn-warning w-100 fw-bold text-uppercase">Submit Match</button></div>
@@ -165,34 +169,3 @@ HTML_TEMPLATE = """
     </div>
 </body>
 </html>
-"""
-
-@app.route('/')
-def index():
-    df_table = generate_league_table()
-    table_data = df_table.to_dict(orient='records') if not df_table.empty else []
-    return render_template_string(HTML_TEMPLATE, table=table_data)
-
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files: return redirect('/')
-    file = request.files['file']
-    if file.filename == '': return redirect('/')
-    
-    if file and file.filename.endswith('.xlsx'):
-        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(filepath)
-        parse_and_log_match(filepath)
-        flash(f"Successfully processed and merged match values from '{file.filename}'!")
-        
-    return redirect('/')
-
-@app.route('/reset-league', methods=['POST'])
-def reset_league():
-    # Overwrites the tracking file back to blank columns
-    initialize_empty_history()
-    flash("The league has been reset! All history has been cleared, and the table is fresh.")
-    return redirect('/')
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
