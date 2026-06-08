@@ -87,7 +87,7 @@ def generate_league_table():
         
         summary.append({
             'Player': player.upper(), 'MP': mp, 'W': w, 'L': l, 'LF': lf, 'LA': la, 'LD': ld, 'Pts': pts,
-            'Avg': round(running_avg, 2), 'CO': f"{round(running_co, 1)}%",
+            'Avg': round(running_avg, 2), 'CO': f"{running_co:.2f}%",  # FIX: Formats exactly to 2 decimal places
             '180': pdf['H180'].sum(), '140+': pdf['H140'].sum(), '100+': pdf['H100'].sum(),
             'Darts': int(total_darts), 'Points': int(round(total_points_scored))
         })
