@@ -88,7 +88,8 @@ def generate_league_table():
         summary.append({
             'Player': player.upper(), 'MP': mp, 'W': w, 'L': l, 'LF': lf, 'LA': la, 'LD': ld, 'Pts': pts,
             'Avg': round(running_avg, 2), 'CO': f"{round(running_co, 1)}%",
-            '180': pdf['H180'].sum(), '140+': pdf['H140'].sum(), '100+': pdf['H100'].sum()
+            '180': pdf['H180'].sum(), '140+': pdf['H140'].sum(), '100+': pdf['H100'].sum(),
+            'Darts': int(total_darts), 'Points': int(round(total_points_scored))
         })
         
     df_table = pd.DataFrame(summary)
@@ -112,6 +113,7 @@ HTML_TEMPLATE = """
         .ld-pos { color: #48bb78; } .ld-neg { color: #f56565; }
         .admin-section { margin-top: 80px; border-top: 1px dashed #2d3748; pt-4; }
         .upload-label { color: #cbd5e1 !important; font-weight: 500; }
+        .text-muted-stats { color: #8a99ad !important; }
     </style>
 </head>
 <body class="py-5">
@@ -135,7 +137,7 @@ HTML_TEMPLATE = """
                 <table class="table table-hover text-center mb-0">
                     <thead>
                         <tr>
-                            <th>Pos</th><th>Player</th><th>MP</th><th>W</th><th>L</th><th>LF</th><th>LA</th><th>LD</th><th>Pts</th><th>Avg</th><th>C/O %</th><th>180</th><th>140+</th><th>100+</th>
+                            <th>Pos</th><th>Player</th><th>MP</th><th>W</th><th>L</th><th>LF</th><th>LA</th><th>LD</th><th>Pts</th><th>Avg</th><th>C/O %</th><th>180</th><th>140+</th><th>100+</th><th class="text-muted-stats">Darts</th><th class="text-muted-stats">Points</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -147,9 +149,10 @@ HTML_TEMPLATE = """
                             <td class="{{ 'ld-pos' if row.LD >= 0 else 'ld-neg' }} fw-bold">{{ '+' if row.LD > 0 }}{{ row.LD }}</td>
                             <td class="fw-bold text-warning">{{ row.Pts }}</td><td>{{ row.Avg }}</td><td>{{ row.CO }}</td>
                             <td>{{ row['180'] }}</td><td>{{ row['140+'] }}</td><td>{{ row['100+'] }}</td>
+                            <td class="text-muted-stats">{{ row.Darts }}</td><td class="text-muted-stats">{{ row.Points }}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="14" class="text-muted py-4">No match data logged yet. Upload your first game above!</td></tr>
+                        <tr><td colspan="16" class="text-muted py-4">No match data logged yet. Upload your first game above!</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
